@@ -1,8 +1,7 @@
-//Talal Javed Qadri
+//Jim Foster & Dillon Heinen
 //August 10, 2014
 
-//All the sprite arrays below were provided by Jonathan Valvano as starter code in SpaceInvaders.c
-//They were moved to this seperate file to improve readibility
+//All sprites and their contents were provided by Dr. Jonathan Valvano
 
 
 // *************************** Images ***************************
