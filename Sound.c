@@ -5,8 +5,10 @@
 // Jonathan Valvano
 // November 17, 2014
 #include <stdint.h>
+#include "../inc/tm4c123gh6pm.h"
 #include "Sound.h"
 #include "DAC.h"
+
 
 const uint8_t shoot[4080] = {
   129, 99, 103, 164, 214, 129, 31, 105, 204, 118, 55, 92, 140, 225, 152, 61, 84, 154, 184, 101, 
@@ -1137,20 +1139,47 @@ const uint8_t highpitch[1802] = {
   67, 119, 148, 166, 164, 238, 223, 202, 174, 112, 96, 78, 0, 34, 54, 99, 143, 160, 166, 183, 
   250, 207};
 
+unsigned long Index = 0;
+const unsigned char *Wave;
+unsigned long SoundCount = 0;
+	
+void Sound_Play(void){
+  if(SoundCount){
+    DAC_Out(Wave[Index]>>4);
+    Index = Index + 1;
+    SoundCount = SoundCount - 1;
+  }else{
+		DAC_Out(0);
+  }
+}
+	
 void Sound_Init(void){
 // write this
+	DAC_Init();          // Port B is DAC
+  Index = 0;
+  NVIC_ST_CTRL_R = 0;
+  NVIC_ST_RELOAD_R = 10000;
+  NVIC_ST_CURRENT_R = 0;
+  NVIC_SYS_PRI3_R = (NVIC_SYS_PRI3_R&0x00FFFFFF)|0x20000000;
+  NVIC_ST_CTRL_R = 0x0007;
 };
-void Sound_Play(const uint8_t *pt, uint32_t count){
-// write this
+void Sound_Out(const uint8_t *pt, uint32_t count){
+//write this
+	Wave = pt;
+  Index = 0;
+  SoundCount = count;
 };
 void Sound_Shoot(void){
 // write this
+	Sound_Out(shoot,4080);
 };
 void Sound_Killed(void){
 // write this
+	Sound_Out(invaderkilled,3377);
 };
 void Sound_Explosion(void){
 // write this
+	Sound_Out(explosion,2000);
 };
 
 void Sound_Fastinvader1(void){
@@ -1167,4 +1196,5 @@ void Sound_Fastinvader4(void){
 };
 void Sound_Highpitch(void){
 // write this
+	Sound_Out(highpitch,1082);
 };
