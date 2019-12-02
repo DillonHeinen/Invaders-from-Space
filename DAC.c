@@ -1,5 +1,5 @@
 // put implementations for functions, explain how it works
-// put your names here, date
+// Jim Foster & Dillon Heinen 12/1/2019
 #include "../inc/tm4c123gh6pm.h"
 #include <stdint.h>
 

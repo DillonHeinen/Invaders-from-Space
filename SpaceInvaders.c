@@ -63,18 +63,37 @@
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
+void PEInit(void);	//PORTE Initialization
+void English(void);	//game in english
+void Spanish(void);	//game in spanish
+void Level1(void);	//Level 1
+void Level2(void);	//Level 2
 
+uint32_t score=0;
+uint32_t gameFlag=0;
+int wait;
+
+void PEInit(void){
+	SYSCTL_RCGCGPIO_R |= 0x10;		//turn on PORTE
+	wait++;
+	wait++;
+	GPIO_PORTE_DEN_R 	|= 0x01;		//digital enable PE0
+	GPIO_PORTE_DIR_R	&= ~0x01;		//PE0 is input
+}
 
 int main(void){
   DisableInterrupts();
   PLL_Init(Bus80MHz);       // Bus clock is 80 MHz 
   Random_Init(1);
-
+	ADC_Init();
   Output_Init();
+	PEInit();
+	
+	
   ST7735_FillScreen(0x0000);            // set screen to black
   
   ST7735_DrawBitmap(52, 159, ns, 18,8); // player ship middle bottom
-  ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
+ // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
 
   ST7735_DrawBitmap(0, 9, SmallEnemy10pointA, 16,10);
   ST7735_DrawBitmap(20,9, SmallEnemy10pointB, 16,10);
@@ -83,35 +102,229 @@ int main(void){
   ST7735_DrawBitmap(80, 9, SmallEnemy30pointA, 16,10);
   ST7735_DrawBitmap(100, 9, SmallEnemy30pointB, 16,10);
 
-  Delay100ms(50);              // delay 5 sec at 80 MHz
+  Delay100ms(5);              // delay .5 sec at 80 MHz
 
-  ST7735_FillScreen(0x0000);            // set screen to black
-  ST7735_SetCursor(1, 1);
-  ST7735_OutString("GAME OVER");
+//  ST7735_FillScreen(0x0000);            // set screen to black
   ST7735_SetCursor(1, 2);
-  ST7735_OutString("Nice try,");
-  ST7735_SetCursor(1, 3);
-  ST7735_OutString("Earthling!");
-  ST7735_SetCursor(2, 4);
-  LCD_OutDec(1234);
+  ST7735_OutString("INVADERS FROM SPACE");
+//  ST7735_SetCursor(1, 4);
+//  ST7735_OutString("    CREATED BY:    ");
+//  ST7735_SetCursor(1, 5);
+//  ST7735_OutString("   JIM & DILLON   ");
+  ST7735_SetCursor(7, 7);
+	ST7735_OutString("Level 1");
+  ST7735_SetCursor(7, 8);
+	ST7735_OutString("Level 2");
+  ST7735_SetCursor(7, 9);
+	ST7735_OutString("English");
+  ST7735_SetCursor(7, 10);
+	ST7735_OutString("Espa\xA4ol");
+  
   while(1){
+		int cursor = ADC_In();
+		if(cursor<1023){
+			ST7735_DrawBitmap(0, 78, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Level1();
+			}
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+		}
+		else if(cursor>1022 && cursor<2047){
+			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Level2();
+			}
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+		}
+		else if(cursor>2046 && cursor<3070){
+			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				English();
+			}
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+		}
+		else{
+			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Spanish();
+			}
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
+		}
+		if(gameFlag==1){
+			//print out score and game over screen.
+			ST7735_FillScreen(0x0000);	//set screen to black
+			ST7735_SetCursor(6, 3);
+			ST7735_OutString("GAME OVER!");
+			ST7735_SetCursor(7, 5);
+			ST7735_OutString("Score: ");	LCD_OutDec(score);
+			Delay100ms(60);		//delay 6 seconds at 80MHz
+			English();
+			gameFlag=0;
+		}
+		
   }
-
+		
 }
 
-//struct player{
-//	int32_t x,y;
-//	uint8_t lives;
-//	uint8_t score;
-//};
+void English(void){
+	ST7735_FillScreen(0x0000);            // set screen to black
+  
+  ST7735_DrawBitmap(52, 159, ns, 18,8); // player ship middle bottom
+ // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
 
-//int main(void){
-//	DisableInterrupts();
-//	PLL_Init(Bus80MHz);
-//	Random_Init(1);
-//}
+  ST7735_DrawBitmap(0, 9, SmallEnemy10pointA, 16,10);
+  ST7735_DrawBitmap(20,9, SmallEnemy10pointB, 16,10);
+  ST7735_DrawBitmap(40, 9, SmallEnemy20pointA, 16,10);
+  ST7735_DrawBitmap(60, 9, SmallEnemy20pointB, 16,10);
+  ST7735_DrawBitmap(80, 9, SmallEnemy30pointA, 16,10);
+  ST7735_DrawBitmap(100, 9, SmallEnemy30pointB, 16,10);
 
+  Delay100ms(5);              // delay .5 sec at 80 MHz
 
+//  ST7735_FillScreen(0x0000);            // set screen to black
+  ST7735_SetCursor(1, 2);
+  ST7735_OutString("INVADERS FROM SPACE");
+//  ST7735_SetCursor(1, 4);
+//  ST7735_OutString("    CREATED BY:    ");
+//  ST7735_SetCursor(1, 5);
+//  ST7735_OutString("   JIM & DILLON   ");
+  ST7735_SetCursor(7, 7);
+	ST7735_OutString("Level 1");
+  ST7735_SetCursor(7, 8);
+	ST7735_OutString("Level 2");
+  ST7735_SetCursor(7, 9);
+	ST7735_OutString("English");
+  ST7735_SetCursor(7, 10);
+	ST7735_OutString("Espa\xA4ol");
+	while(1){
+		int cursor = ADC_In();
+		if(cursor<1023){
+			ST7735_DrawBitmap(0, 78, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Level1();
+			}
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+		}
+		else if(cursor>1022 && cursor<2047){
+			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Level2();
+			}
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+		}
+		else if(cursor>2046 && cursor<3070){
+			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				English();
+			}
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+		}
+		else{
+			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Spanish();
+			}
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
+		}
+		if(gameFlag==1){
+			//print out score and game over screen.
+			ST7735_FillScreen(0x0000);	//set screen to black
+			ST7735_SetCursor(6, 3);
+			ST7735_OutString("GAME OVER!");
+			ST7735_SetCursor(7, 5);
+			ST7735_OutString("Score: ");	LCD_OutDec(score);
+			Delay100ms(60);		//delay 6 seconds at 80MHz
+			English();
+			gameFlag=0;
+		}
+		
+  }
+}
+
+void Spanish(void){
+	
+		ST7735_FillScreen(0x0000);            // set screen to black
+  
+  ST7735_DrawBitmap(52, 159, ns, 18,8); // player ship middle bottom
+ // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
+
+  ST7735_DrawBitmap(0, 9, SmallEnemy10pointA, 16,10);
+  ST7735_DrawBitmap(20,9, SmallEnemy10pointB, 16,10);
+  ST7735_DrawBitmap(40, 9, SmallEnemy20pointA, 16,10);
+  ST7735_DrawBitmap(60, 9, SmallEnemy20pointB, 16,10);
+  ST7735_DrawBitmap(80, 9, SmallEnemy30pointA, 16,10);
+  ST7735_DrawBitmap(100, 9, SmallEnemy30pointB, 16,10);
+
+  Delay100ms(5);              // delay .5 sec at 80 MHz
+
+//  ST7735_FillScreen(0x0000);            // set screen to black
+  ST7735_SetCursor(0, 2);
+  ST7735_OutString("INVASORES DEL  ESPACIO");
+  ST7735_SetCursor(7, 7);
+	ST7735_OutString("Nivel 1");
+  ST7735_SetCursor(7, 8);
+	ST7735_OutString("Nivel 2");
+  ST7735_SetCursor(7, 9);
+	ST7735_OutString("English");
+  ST7735_SetCursor(7, 10);
+	ST7735_OutString("Espa\xA4ol");
+  
+  while(1){
+		int cursor = ADC_In();
+		if(cursor<1023){
+			ST7735_DrawBitmap(0, 78, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Level1();
+			}
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+		}
+		else if(cursor>1022 && cursor<2047){
+			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Level2();
+			}
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+		}
+		else if(cursor>2046 && cursor<3070){
+			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				English();
+			}
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+		}
+		else{
+			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
+			if(GPIO_PORTE_DATA_R==1){
+				Spanish();
+			}
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
+		}
+		
+		if(gameFlag==1){
+			//print out score and game over screen.
+			ST7735_FillScreen(0x0000);	//set screen to black
+			ST7735_SetCursor(7, 3);
+			ST7735_OutString("\xADJUEGO TERMINADO!");
+			ST7735_SetCursor(7, 5);
+			ST7735_OutString("Puntuaci\xA2n: ");	LCD_OutDec(score);
+			Delay100ms(60);		//delay 6 seconds at 80MHz
+			English();
+			gameFlag=0;
+		}
+	}
+}
+
+void Level1(void){
+	while(1){
+		
+	}
+}
+
+void Level2(void){
+	while(1){
+		
+	}
+}
 // You can't use this timer, it is here for starter code only 
 // you must use interrupts to perform delays
 void Delay100ms(uint32_t count){uint32_t volatile time;
