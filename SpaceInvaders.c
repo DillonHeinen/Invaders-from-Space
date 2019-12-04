@@ -63,7 +63,7 @@
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
-void PEInit(void);	//PORTE Initialization
+void P_Init(void);	//PORTE Initialization
 void English(void);	//game in english
 void Spanish(void);	//game in spanish
 void Level1(void);	//Level 1
@@ -200,12 +200,17 @@ void Game_Init(void){
 	}
 }
 
-void PEInit(void){
-	SYSCTL_RCGCGPIO_R |= 0x10;		//turn on PORTE
+void P_Init(void){
+	SYSCTL_RCGCGPIO_R |= 0x30;		//turn on PORTE & F
 	wait++;
 	wait++;
 	GPIO_PORTE_DEN_R 	|= 0x03;		//digital enable PE0-1
 	GPIO_PORTE_DIR_R	&= ~0x03;		//PE0-1 is input
+	GPIO_PORTF_LOCK_R = 0x4C4F434B;
+	GPIO_PORTF_CR_R = 0x01;
+	GPIO_PORTF_DIR_R &= ~0x01;		//PF0 input
+	GPIO_PORTF_PUR_R = 0x01;
+	GPIO_PORTF_DEN_R = 0x01;
 }
 
 void SysTickInit(void){
@@ -227,8 +232,30 @@ void VibeCheck(void){
 
 void LaunchMissile(void){
 	ST7735_DrawBitmap(PMissile.Mail, path, missile, 12,12);
-//	Sound_Shoot();
+	Sound_Shoot();
 	ammo=0;
+}
+
+void pause(void){
+    if((GPIO_PORTF_DATA_R&0x01) == 1){
+        wait++;
+        wait++;
+        wait++;
+        wait++;
+        wait++;
+        wait++;
+        wait++;
+        wait++;
+        while((GPIO_PORTF_DATA_R&0x01) != 1){
+        }
+    }else{
+        NVIC_DIS1_R = 1<<19;        //disable IRQ 19
+  }
+}
+
+void pause_init(void){
+    //initialize port f
+  Timer1_Init(&pause,80000000/11000); //11 kHz
 }
 
 void SysTick_Handler(void){
@@ -277,7 +304,7 @@ void SysTick_Handler(void){
 			PMissile.Status=0;
 			MissileHitEnemy=1;
 			score+=10;
-//			Sound_Killed();
+			Sound_Killed();
 			i=30;
 		}
 			
@@ -296,7 +323,7 @@ int main(void){
 	ST7735_InitR(INITR_REDTAB);
   ST7735_FillScreen(0); 
 	ADC_Init();
-	PEInit();
+	P_Init();
 	SysTickInit();
 //	Sound_Init();
 	
@@ -319,6 +346,7 @@ int main(void){
 //  ST7735_FillScreen(0x0000);            // set screen to black
   ST7735_SetCursor(1, 2);
   ST7735_OutString("INVADERS FROM SPACE");
+	Sound_Fastinvader1();
 //  ST7735_SetCursor(1, 4);
 //  ST7735_OutString("    CREATED BY:    ");
 //  ST7735_SetCursor(1, 5);
@@ -572,11 +600,18 @@ void Level1(void){
 					gameFlag = 1;
 				}
 			}
+			if(Enemies[i].Life==0){
+				lifecheck+=1;
+			}
 			
 		}
+		if(lifecheck==30){
+			gameFlag=2;
+		}
+		lifecheck = 0;
 		
 		
-		if(gameFlag==1){
+		if(gameFlag>0){
 			if(globe==0){
 				//print out score and game over screen.
 				ST7735_FillScreen(0x0000);	//set screen to black
@@ -584,7 +619,12 @@ void Level1(void){
 				ST7735_OutString("GAME OVER!");
 				ST7735_SetCursor(7, 5);
 				ST7735_OutString("Score: ");	LCD_OutDec(score);
-//				Sound_Explosion();
+				if(gameFlag==1){
+				Sound_Explosion();
+				}
+				if(gameFlag==2){
+				Sound_Highpitch();	
+				}
 				Delay100ms(60);		//delay 6 seconds at 80MHz
 				gameFlag=0;
 				score=0;
@@ -597,7 +637,12 @@ void Level1(void){
 				ST7735_OutString("\xADJUEGO TERMINADO!");
 				ST7735_SetCursor(3, 5);
 				ST7735_OutString("Puntuaci\xA2n: ");	LCD_OutDec(score);
-//				Sound_Explosion();
+				if(gameFlag==1){
+				Sound_Explosion();
+				}
+				if(gameFlag==2){
+				Sound_Highpitch();	
+				}
 				Delay100ms(60);		//delay 6 seconds at 80MHz
 				gameFlag=0;
 				score=0;
@@ -626,42 +671,7 @@ void DrawEnemies1(void){
 		}
 }
 
-void DrawEnemies2(void){
-		ST7735_DrawBitmap(horiz, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert, SmallEnemy30pointB, 16,10);
-	
-		ST7735_DrawBitmap(horiz, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+10, SmallEnemy30pointA, 16,10);
-	
-		ST7735_DrawBitmap(horiz, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+20, SmallEnemy20pointB, 16,10);
-	
-		ST7735_DrawBitmap(horiz, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+30, SmallEnemy20pointA, 16,10);
-		
-		ST7735_DrawBitmap(horiz, vert+40, SmallEnemy10pointA, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+40, SmallEnemy10pointA, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+40, SmallEnemy10pointA, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+40, SmallEnemy10pointA, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+40, SmallEnemy10pointA, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+40, SmallEnemy10pointA, 16,10);
-}
+
 // You can't use this timer, it is here for starter code only 
 // you must use interrupts to perform delays
 void Delay100ms(uint32_t count){uint32_t volatile time;
