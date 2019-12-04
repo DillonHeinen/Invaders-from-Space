@@ -59,6 +59,7 @@
 #include "Sound.h"
 #include "Timer0.h"
 #include "Timer1.h"
+#include "DAC.h"
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -74,7 +75,7 @@ void VibeCheck(void);
 void LaunchMissile(void);
 void Game_Init(void);
 
-uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0, i=0, j=0, globe=0, lifecheck=0;
+uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0, i=0, j=0, globe=0, lifecheck=0, levelup=1;
 int wait;
 int horiz=0, vert=9, count=0, left=1, right=0, ammo=1, path=151, MissileHitEnemy=0, MissileHitPlayer=0, MissileHitBunker=0;
 uint32_t MissileLaunchX[6] = {20, 40, 60, 80, 100, 120};
@@ -237,25 +238,18 @@ void LaunchMissile(void){
 }
 
 void pause(void){
-    if((GPIO_PORTF_DATA_R&0x01) == 1){
-        wait++;
-        wait++;
-        wait++;
-        wait++;
-        wait++;
-        wait++;
-        wait++;
-        wait++;
-        while((GPIO_PORTF_DATA_R&0x01) != 1){
-        }
-    }else{
-        NVIC_DIS1_R = 1<<19;        //disable IRQ 19
-  }
+    if((GPIO_PORTF_DATA_R&0x01) == 0){
+        NVIC_ST_CTRL_R = 0x05;
+    }
+		while((GPIO_PORTF_DATA_R&0x01) == 0){}
+			NVIC_ST_CTRL_R = 0x07;
 }
 
 void pause_init(void){
     //initialize port f
+	NVIC_EN0_R = 1<<21;           // 9) enable IRQ 21 in NVIC
   Timer1_Init(&pause,80000000/11000); //11 kHz
+	
 }
 
 void SysTick_Handler(void){
@@ -325,7 +319,8 @@ int main(void){
 	ADC_Init();
 	P_Init();
 	SysTickInit();
-//	Sound_Init();
+	Sound_Init();
+	pause_init();
 	
 //	Spanish();			//here for debug reasons
 //	Level1();					//debug reasons
@@ -346,7 +341,9 @@ int main(void){
 //  ST7735_FillScreen(0x0000);            // set screen to black
   ST7735_SetCursor(1, 2);
   ST7735_OutString("INVADERS FROM SPACE");
-	Sound_Fastinvader1();
+	for(int x=0; x<5000; x++){
+		Sound_Fastinvader2();
+	}
 //  ST7735_SetCursor(1, 4);
 //  ST7735_OutString("    CREATED BY:    ");
 //  ST7735_SetCursor(1, 5);
@@ -571,9 +568,10 @@ void Level1(void){
 	EnableInterrupts();
 	while(1){	
 		
-//		VibeCheck();
-		DrawEnemies1();
 
+		DrawEnemies1();
+		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
+		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
 		
 		if(MissileHitEnemy==1){
 			for(i=0;i<30;i++){
@@ -654,12 +652,92 @@ void Level1(void){
 }
 
 void Level2(void){
-	while(1){
+		levelup=2;
 		ST7735_FillScreen(0x0000);            // set screen to black
 		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
 		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
-		EnableInterrupts();
+	EnableInterrupts();
+	while(1){	
 		
+
+		DrawEnemies1();
+		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
+		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
+		
+		if(MissileHitEnemy==1){
+			for(i=0;i<30;i++){
+				if(Enemies[i].Life==0){
+					ST7735_DrawBitmap(Enemies[i].ObjX, Enemies[i].ObjY, EmptyEnemy, 16,10);
+				}
+			}
+		}
+		
+		if(Player.Status==1){
+			posit2 = Convert(Player.Mail);
+			ST7735_DrawBitmap(posit1, 159, Empty, 18,8);
+			ST7735_DrawBitmap(posit2, 159, PlayerShip0, 18,8);
+			Player.Status=0;
+		}
+		
+		if(PMissile.Status==1){
+			LaunchMissile();
+		}
+		
+		for(i=0;i<30;i++){
+			if(Enemies[i].Life){
+				if(Enemies[i].ObjY>130){
+					gameFlag = 1;
+				}
+			}
+			if(Enemies[i].Life==0){
+				lifecheck+=1;
+			}
+			
+		}
+		if(lifecheck==30){
+			gameFlag=2;
+		}
+		lifecheck = 0;
+		
+		
+		if(gameFlag>0){
+			if(globe==0){
+				//print out score and game over screen.
+				ST7735_FillScreen(0x0000);	//set screen to black
+				ST7735_SetCursor(6, 3);
+				ST7735_OutString("GAME OVER!");
+				ST7735_SetCursor(7, 5);
+				ST7735_OutString("Score: ");	LCD_OutDec(score);
+				if(gameFlag==1){
+				Sound_Explosion();
+				}
+				if(gameFlag==2){
+				Sound_Highpitch();	
+				}
+				Delay100ms(60);		//delay 6 seconds at 80MHz
+				gameFlag=0;
+				score=0;
+				main();
+			}
+			if(globe==1){
+				//print out score and game over screen.
+				ST7735_FillScreen(0x0000);	//set screen to black
+				ST7735_SetCursor(2, 3);
+				ST7735_OutString("\xADJUEGO TERMINADO!");
+				ST7735_SetCursor(3, 5);
+				ST7735_OutString("Puntuaci\xA2n: ");	LCD_OutDec(score);
+				if(gameFlag==1){
+				Sound_Explosion();
+				}
+				if(gameFlag==2){
+				Sound_Highpitch();	
+				}
+				Delay100ms(60);		//delay 6 seconds at 80MHz
+				gameFlag=0;
+				score=0;
+				main();
+			}
+		}
 	}
 }
 
@@ -682,4 +760,15 @@ void Delay100ms(uint32_t count){uint32_t volatile time;
     }
     count--;
   }
+}
+
+int mainSoundTest(void){
+	Sound_Init();
+	while(1){
+		for(i=0;i<128;i++){
+			Sound_Shoot();
+			wait++;
+			wait++;
+		}
+	}
 }
