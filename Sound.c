@@ -8,6 +8,7 @@
 #include "../inc/tm4c123gh6pm.h"
 #include "Sound.h"
 #include "DAC.h"
+#include "Timer0.h"
 
 
 const uint8_t shoot[4080] = {
@@ -1145,11 +1146,11 @@ unsigned long SoundCount = 0;
 	
 void Sound_Play(void){
   if(SoundCount){
-    DAC_Out(Wave[Index]>>4);
+    DAC_Out(Wave[Index]);		//8-bit sound, 8-bit DAC
     Index = Index + 1;
     SoundCount = SoundCount - 1;
   }else{
-		DAC_Out(0);
+		NVIC_DIS0_R = 1<<19;		//disable IRQ 19
   }
 }
 	
@@ -1157,11 +1158,7 @@ void Sound_Init(void){
 // write this
 	DAC_Init();          // Port B is DAC
   Index = 0;
-  NVIC_ST_CTRL_R = 0;
-  NVIC_ST_RELOAD_R = 10000;
-  NVIC_ST_CURRENT_R = 0;
-  NVIC_SYS_PRI3_R = (NVIC_SYS_PRI3_R&0x00FFFFFF)|0x20000000;
-  NVIC_ST_CTRL_R = 0x0007;
+  Timer0_Init(&Sound_Play,80000000/11000); //11 kHz
 };
 void Sound_Out(const uint8_t *pt, uint32_t count){
 //write this
