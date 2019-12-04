@@ -70,12 +70,15 @@ void Level1(void);	//Level 1
 void Level2(void);	//Level 2
 void DrawEnemies1(void);
 void DrawEnemies2(void);
+void VibeCheck(void);
+void LaunchMissile(void);
+void Game_Init(void);
 
-uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0;
+uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0, i=0, j=0, globe=0;
 int wait;
-int horiz=0, vert=9, count=0, left=1, right=0;
-uint32_t MissileLaunchX[] = {20, 40, 60, 80, 100, 120};
-uint32_t MissileLaunchY[] = {10, 20, 30, 40, 50, 60};
+int horiz=0, vert=9, count=0, left=1, right=0, ammo=1, path=151, MissileHitEnemy=0, MissileHitPlayer=0, MissileHitBunker=0;
+uint32_t MissileLaunchX[6] = {20, 40, 60, 80, 100, 120};
+uint32_t MissileLaunchY[6] = {10, 20, 30, 40, 50, 60};
 
 struct mailbox{
 	uint32_t Mail;
@@ -84,14 +87,125 @@ struct mailbox{
 };
 
 typedef struct mailbox SType;
-struct mailbox Primary;
+struct mailbox Player;
+struct mailbox PMissile;
+
+struct enemy{
+	uint32_t ObjX;
+	uint32_t ObjY;
+	uint32_t Life;
+};
+
+typedef struct enemy EType;
+struct enemy ESprite;
+
+struct enemy Enemies[30] = {
+	{0,0,1},//0
+	{0,0,1},//1
+	{0,0,1},//2
+	{0,0,1},//3
+	{0,0,1},//4
+	{0,0,1},//5
+	
+	{0,0,1},//6
+	{0,0,1},//7
+	{0,0,1},//8
+	{0,0,1},//9
+	{0,0,1},//10
+	{0,0,1},//11
+	
+	{0,0,1},//12
+	{0,0,1},//13
+	{0,0,1},//14
+	{0,0,1},//15
+	{0,0,1},//16
+	{0,0,1},//17
+	
+	{0,0,1},//18
+	{0,0,1},//19
+	{0,0,1},//20
+	{0,0,1},//21
+	{0,0,1},//22
+	{0,0,1},//23
+	
+	{0,0,1},//24
+	{0,0,1},//25
+	{0,0,1},//26
+	{0,0,1},//27
+	{0,0,1},//28
+	{0,0,1},//29
+	
+};
+
+void Game_Init(void){
+
+	for(i=0;i<30;i++){
+		if(i<6){
+			if(i==0){
+				while(j<30){
+					Enemies[i+j].ObjX=horiz;
+					j+=6;
+				}
+				j=0;
+			}
+			if(i==1){
+				while(j<30){
+					Enemies[i+j].ObjX=horiz+20;
+					j+=6;
+				}
+				j=0;
+			}
+			if(i==2){
+				while(j<30){
+					Enemies[i+j].ObjX=horiz+40;
+					j+=6;
+				}
+				j=0;
+			}
+			if(i==3){
+				while(j<30){
+					Enemies[i+j].ObjX=horiz+60;
+					j+=6;
+				}
+				j=0;
+			}
+			if(i==4){
+				while(j<30){
+					Enemies[i+j].ObjX=horiz+80;
+					j+=6;
+				}
+				j=0;
+			}
+			if(i==5){
+				while(j<30){
+					Enemies[i+j].ObjX=horiz+100;
+					j+=6;
+				}
+				j=0;
+			}
+			Enemies[i].ObjY=vert;
+		}
+		else if(i<12){
+			Enemies[i].ObjY=vert+10;
+		}
+		else if(i<18){
+			Enemies[i].ObjY=vert+20;
+		}
+		else if(i<24){
+			Enemies[i].ObjY=vert+30;
+		}
+		else if(i>23){
+			Enemies[i].ObjY=vert+40;
+		}
+	}
+}
 
 void PEInit(void){
 	SYSCTL_RCGCGPIO_R |= 0x10;		//turn on PORTE
 	wait++;
 	wait++;
-	GPIO_PORTE_DEN_R 	|= 0x01;		//digital enable PE0
-	GPIO_PORTE_DIR_R	&= ~0x01;		//PE0 is input
+	GPIO_PORTE_DEN_R 	|= 0x03;		//digital enable PE0-1
+	GPIO_PORTE_DIR_R	&= ~0x03;		//PE0-1 is input
 }
 
 void SysTickInit(void){
@@ -107,12 +221,21 @@ uint32_t Convert(uint32_t input){
   return converted; 
 }
 
+void VibeCheck(void){
+	
+}
+
+void LaunchMissile(void){
+	ST7735_DrawBitmap(PMissile.Mail, path, missile, 12,12);
+	ammo=0;
+}
+
 void SysTick_Handler(void){
-	Primary.Mail = ADC_In();
-	if(Primary.Mail!=Primary.previous){
-		Primary.Status = 1;
-		posit1 = Convert(Primary.previous);
-		Primary.previous=Primary.Mail;
+	Player.Mail = ADC_In();
+	if(Player.Mail!=Player.previous){
+		Player.Status = 1;
+		posit1 = Convert(Player.previous);
+		Player.previous=Player.Mail;
 	}
 	if(count<=5){
 		if(left){
@@ -128,17 +251,45 @@ void SysTick_Handler(void){
 			count=0;
 			left^=1;
 			right^=1;
+	}
+	Game_Init();
+	if((GPIO_PORTE_DATA_R&0x01)==1){		//Read, Aim, FIRE! Check to see if button is pressed for player missile to fire
+		if(ammo){													//do you have ammo?
+			PMissile.Status=1;							
 		}
+		PMissile.Mail = posit2;
+	}
+	if(path<0){							//
+		PMissile.Status=0;		//if missile goes off screen switch Status to 0
+	}												//
+	if(PMissile.Status==0){
+		ammo=1;
+		path=151;
+	}
+	else{
+		path-=2;
+	}
+		
+	for(i=0;i<30;i++){
+		if(((PMissile.Mail+4>Enemies[i].ObjX+2)&(PMissile.Mail+8<Enemies[i].ObjX+14))&(path+12==Enemies[i].ObjY+12)&(path==Enemies[i].ObjY)){
+			Enemies[i].Life=0;
+			PMissile.Status=0;
+			MissileHitEnemy=1;
+			score+=10;
+			i=30;
+		}
+			
+	}
 	
 }
 
 
 int main(void){
-	Primary.previous=5000;
+	Player.previous=5000;
   DisableInterrupts();
   PLL_Init(Bus80MHz);       // Bus clock is 80 MHz 
   Random_Init(1);
-	
+	Game_Init();							//set up array of data structs to correct values
  // Output_Init();
 	ST7735_InitR(INITR_REDTAB);
   ST7735_FillScreen(0); 
@@ -185,46 +336,45 @@ int main(void){
 			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level1();
 			}
-			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else if(cursor>1022 && cursor<2047){
 			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
 			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level2();
 			}
-			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else if(cursor>2046 && cursor<3070){
 			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
 			if((GPIO_PORTE_DATA_R&0x01)==1){
 				English();
 			}
-			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else{
 			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
 			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Spanish();
 			}
-			ST7735_DrawBitmap(0, 108, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
 		}
-		if(gameFlag==1){
-			//print out score and game over screen.
-			ST7735_FillScreen(0x0000);	//set screen to black
-			ST7735_SetCursor(6, 3);
-			ST7735_OutString("GAME OVER!");
-			ST7735_SetCursor(7, 5);
-			ST7735_OutString("Score: ");	LCD_OutDec(score);
-			Delay100ms(60);		//delay 6 seconds at 80MHz
-			English();
-			gameFlag=0;
-		}
+		
 		
   }
 		
 }
 
 void English(void){
+	globe=0;
 	ST7735_FillScreen(0x0000);            // set screen to black
   
   ST7735_DrawBitmap(52, 159, PlayerShip0, 18,8); // player ship middle bottom
@@ -258,31 +408,39 @@ void English(void){
 		int cursor = ADC_In();
 		if(cursor<1023){
 			ST7735_DrawBitmap(0, 78, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level1();
 			}
-			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else if(cursor>1022 && cursor<2047){
 			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level2();
 			}
-			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else if(cursor>2046 && cursor<3070){
 			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				English();
 			}
-			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else{
 			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Spanish();
 			}
-			ST7735_DrawBitmap(0, 108, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
 		}
 		if(gameFlag==1){
 			//print out score and game over screen.
@@ -300,6 +458,7 @@ void English(void){
 }
 
 void Spanish(void){
+		globe=1;
 	
 		ST7735_FillScreen(0x0000);            // set screen to black
   
@@ -333,43 +492,43 @@ void Spanish(void){
 		int cursor = ADC_In();
 		if(cursor<1023){
 			ST7735_DrawBitmap(0, 78, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level1();
 			}
-			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else if(cursor>1022 && cursor<2047){
 			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level2();
 			}
-			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else if(cursor>2046 && cursor<3070){
 			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				English();
 			}
-			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
+			ST7735_DrawBitmap(0, 108, Empty, 16,10);
 		}
 		else{
 			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Spanish();
 			}
-			ST7735_DrawBitmap(0, 108, Empty, 16,10);
+			ST7735_DrawBitmap(0, 88, Empty, 16,10);
+			ST7735_DrawBitmap(0, 98, Empty, 16,10);
+			ST7735_DrawBitmap(0, 78, Empty, 16,10);
 		}
 		
 		if(gameFlag==1){
-			//print out score and game over screen.
-			ST7735_FillScreen(0x0000);	//set screen to black
-			ST7735_SetCursor(7, 3);
-			ST7735_OutString("\xADJUEGO TERMINADO!");
-			ST7735_SetCursor(7, 5);
-			ST7735_OutString("Puntuaci\xA2n: ");	LCD_OutDec(score);
-			Delay100ms(60);		//delay 6 seconds at 80MHz
-			English();
-			gameFlag=0;
+			
 		}
 	}
 }
@@ -379,37 +538,64 @@ void Level1(void){
 		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
 		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
 	EnableInterrupts();
-	while(1){
+	while(1){	
 		
-//		while(horiz<=10){
-//			DrawEnemies1();
-//			horiz++;
-//			DrawEnemies2();
-//		}
-//		vert++;
-//		while(horiz>=0){
-//			DrawEnemies1();
-//			horiz--;
-//			DrawEnemies2();
-//		}
-//		vert++;
-//		
+//		VibeCheck();
 		DrawEnemies1();
 		
-		if(Primary.Status==1){
-			
-			posit2 = Convert(Primary.Mail);
-			ST7735_DrawBitmap(posit1, 159, Empty, 18,8);
-			ST7735_DrawBitmap(posit2, 159, PlayerShip0, 18,8);
-			Primary.Status=0;
+		if(MissileHitEnemy==1){
+			for(i=0;i<30;i++){
+				if(Enemies[i].Life==0){
+					ST7735_DrawBitmap(Enemies[i].ObjX, Enemies[i].ObjY, EmptyEnemy, 16,10);
+				}
+			}
 		}
 		
-//		ST7735_DrawBitmap(posit, 159, Empty, 18,8);
-//		posit = ADC_In();
-//		posit = Convert(posit);
-//		ST7735_DrawBitmap(posit, 159, PlayerShip0, 18,8);
-//		Delay100ms(1);
+		if(Player.Status==1){
+			posit2 = Convert(Player.Mail);
+			ST7735_DrawBitmap(posit1, 159, Empty, 18,8);
+			ST7735_DrawBitmap(posit2, 159, PlayerShip0, 18,8);
+			Player.Status=0;
+		}
 		
+		if(PMissile.Status==1){
+			LaunchMissile();
+		}
+		
+		for(i=0;i<30;i++){
+			if(Enemies[i].Life){
+				if(Enemies[i].ObjY>130){
+					gameFlag = 1;
+				}
+			}
+		}
+		
+		if(gameFlag==1){
+			if(globe==0){
+				//print out score and game over screen.
+				ST7735_FillScreen(0x0000);	//set screen to black
+				ST7735_SetCursor(6, 3);
+				ST7735_OutString("GAME OVER!");
+				ST7735_SetCursor(7, 5);
+				ST7735_OutString("Score: ");	LCD_OutDec(score);
+				Delay100ms(60);		//delay 6 seconds at 80MHz
+				gameFlag=0;
+				score=0;
+				main();
+			}
+			if(globe==1){
+				//print out score and game over screen.
+				ST7735_FillScreen(0x0000);	//set screen to black
+				ST7735_SetCursor(2, 3);
+				ST7735_OutString("\xADJUEGO TERMINADO!");
+				ST7735_SetCursor(3, 5);
+				ST7735_OutString("Puntuaci\xA2n: ");	LCD_OutDec(score);
+				Delay100ms(60);		//delay 6 seconds at 80MHz
+				gameFlag=0;
+				score=0;
+				main();
+			}
+		}
 	}
 	
 }
@@ -425,40 +611,11 @@ void Level2(void){
 }
 
 void DrawEnemies1(void){
-		ST7735_DrawBitmap(horiz, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert, SmallEnemy30pointB, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert, SmallEnemy30pointB, 16,10);
-	
-		ST7735_DrawBitmap(horiz, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+10, SmallEnemy30pointA, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+10, SmallEnemy30pointA, 16,10);
-	
-		ST7735_DrawBitmap(horiz, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+20, SmallEnemy20pointB, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+20, SmallEnemy20pointB, 16,10);
-	
-		ST7735_DrawBitmap(horiz, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+30, SmallEnemy20pointA, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+30, SmallEnemy20pointA, 16,10);
-		
-		ST7735_DrawBitmap(horiz, vert+40, SmallEnemy10pointB, 16,10);
-		ST7735_DrawBitmap(horiz+20, vert+40, SmallEnemy10pointB, 16,10);
-		ST7735_DrawBitmap(horiz+40, vert+40, SmallEnemy10pointB, 16,10);
-		ST7735_DrawBitmap(horiz+60, vert+40, SmallEnemy10pointB, 16,10);
-		ST7735_DrawBitmap(horiz+80, vert+40, SmallEnemy10pointB, 16,10);
-		ST7735_DrawBitmap(horiz+100, vert+40, SmallEnemy10pointB, 16,10);
+		for(i=0;i<30;i++){
+			if(Enemies[i].Life!=0){
+				ST7735_DrawBitmap(Enemies[i].ObjX, Enemies[i].ObjY, SmallEnemy10pointA, 16,10);
+			}
+		}
 }
 
 void DrawEnemies2(void){
