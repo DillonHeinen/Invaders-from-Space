@@ -71,9 +71,9 @@ void Level2(void);	//Level 2
 void DrawEnemies1(void);
 void DrawEnemies2(void);
 
-uint32_t score=0, gameFlag=0, converted, posit;
+uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0;
 int wait;
-int horiz=0, vert=9;
+int horiz=0, vert=9, count=0, left=1, right=0;
 uint32_t MissileLaunchX[] = {20, 40, 60, 80, 100, 120};
 uint32_t MissileLaunchY[] = {10, 20, 30, 40, 50, 60};
 
@@ -96,24 +96,42 @@ void PEInit(void){
 
 void SysTickInit(void){
 	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
-  NVIC_ST_RELOAD_R = 0x00145855;  			// 60Hz reload value
+  NVIC_ST_RELOAD_R = 0x0028B0AA;  			// reload value
   NVIC_ST_CURRENT_R = 0;                // any write to current clears it
                                         // enable SysTick with core clock
   NVIC_ST_CTRL_R = 0x00000007;
-}
-
-void SysTick_Handler(void){
-	Primary.Mail = ADC_In();
-	if(Primary.Mail!=Primary.previous){
-		Primary.Status = 1;
-		Primary.previous=Primary.Mail;
-	}
 }
 
 uint32_t Convert(uint32_t input){
 	converted = (110*input)/4095;		//110 keeps the player model on the screen
   return converted; 
 }
+
+void SysTick_Handler(void){
+	Primary.Mail = ADC_In();
+	if(Primary.Mail!=Primary.previous){
+		Primary.Status = 1;
+		posit1 = Convert(Primary.previous);
+		Primary.previous=Primary.Mail;
+	}
+	if(count<=5){
+		if(left){
+			horiz+=2; count++;
+		}
+		else if(right){
+			horiz-=2; count++;
+		}
+		
+	}
+	else{
+			vert++;
+			count=0;
+			left^=1;
+			right^=1;
+		}
+	
+}
+
 
 int main(void){
 	Primary.previous=5000;
@@ -129,9 +147,9 @@ int main(void){
 	SysTickInit();
 	
 //	Spanish();			//here for debug reasons
-	
+//	Level1();					//debug reasons
   ST7735_FillScreen(0x0000);            // set screen to black
-  
+	
   ST7735_DrawBitmap(52, 159, PlayerShip0, 18,8); // player ship middle bottom
  // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
 //	Level1();
@@ -360,31 +378,48 @@ void Level1(void){
 		ST7735_FillScreen(0x0000);            // set screen to black
 		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
 		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
+	EnableInterrupts();
 	while(1){
 		
-		while(horiz<=10){
-			DrawEnemies1();
-			horiz++;
-			DrawEnemies2();
-		}
-		vert++;
-		while(horiz>=0){
-			DrawEnemies1();
-			horiz--;
-			DrawEnemies2();
-		}
-		vert++;
+//		while(horiz<=10){
+//			DrawEnemies1();
+//			horiz++;
+//			DrawEnemies2();
+//		}
+//		vert++;
+//		while(horiz>=0){
+//			DrawEnemies1();
+//			horiz--;
+//			DrawEnemies2();
+//		}
+//		vert++;
+//		
+		DrawEnemies1();
+		
 		if(Primary.Status==1){
-			posit = Convert(Primary.Mail);
-			ST7735_DrawBitmap(posit, 159, PlayerShip0, 18,8);
+			
+			posit2 = Convert(Primary.Mail);
+			ST7735_DrawBitmap(posit1, 159, Empty, 18,8);
+			ST7735_DrawBitmap(posit2, 159, PlayerShip0, 18,8);
 			Primary.Status=0;
 		}
+		
+//		ST7735_DrawBitmap(posit, 159, Empty, 18,8);
+//		posit = ADC_In();
+//		posit = Convert(posit);
+//		ST7735_DrawBitmap(posit, 159, PlayerShip0, 18,8);
+//		Delay100ms(1);
+		
 	}
 	
 }
 
 void Level2(void){
 	while(1){
+		ST7735_FillScreen(0x0000);            // set screen to black
+		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
+		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
+		EnableInterrupts();
 		
 	}
 }
