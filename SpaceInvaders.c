@@ -74,7 +74,7 @@ void VibeCheck(void);
 void LaunchMissile(void);
 void Game_Init(void);
 
-uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0, i=0, j=0, globe=0;
+uint32_t score=0, gameFlag=0, converted, posit2=0, posit1=0, i=0, j=0, globe=0, lifecheck=0;
 int wait;
 int horiz=0, vert=9, count=0, left=1, right=0, ammo=1, path=151, MissileHitEnemy=0, MissileHitPlayer=0, MissileHitBunker=0;
 uint32_t MissileLaunchX[6] = {20, 40, 60, 80, 100, 120};
@@ -227,6 +227,7 @@ void VibeCheck(void){
 
 void LaunchMissile(void){
 	ST7735_DrawBitmap(PMissile.Mail, path, missile, 12,12);
+//	Sound_Shoot();
 	ammo=0;
 }
 
@@ -271,11 +272,12 @@ void SysTick_Handler(void){
 	}
 		
 	for(i=0;i<30;i++){
-		if(((PMissile.Mail+4>Enemies[i].ObjX+2)&(PMissile.Mail+8<Enemies[i].ObjX+14))&(path+12==Enemies[i].ObjY+12)&(path==Enemies[i].ObjY)){
+		if((Enemies[i].Life==1)&((PMissile.Mail+4>Enemies[i].ObjX+2)&(PMissile.Mail+8<Enemies[i].ObjX+14))&(path+12>=Enemies[i].ObjY)&(path<=Enemies[i].ObjY+10)){
 			Enemies[i].Life=0;
 			PMissile.Status=0;
 			MissileHitEnemy=1;
 			score+=10;
+//			Sound_Killed();
 			i=30;
 		}
 			
@@ -296,6 +298,7 @@ int main(void){
 	ADC_Init();
 	PEInit();
 	SysTickInit();
+//	Sound_Init();
 	
 //	Spanish();			//here for debug reasons
 //	Level1();					//debug reasons
@@ -542,6 +545,7 @@ void Level1(void){
 		
 //		VibeCheck();
 		DrawEnemies1();
+
 		
 		if(MissileHitEnemy==1){
 			for(i=0;i<30;i++){
@@ -568,7 +572,9 @@ void Level1(void){
 					gameFlag = 1;
 				}
 			}
+			
 		}
+		
 		
 		if(gameFlag==1){
 			if(globe==0){
@@ -578,6 +584,7 @@ void Level1(void){
 				ST7735_OutString("GAME OVER!");
 				ST7735_SetCursor(7, 5);
 				ST7735_OutString("Score: ");	LCD_OutDec(score);
+//				Sound_Explosion();
 				Delay100ms(60);		//delay 6 seconds at 80MHz
 				gameFlag=0;
 				score=0;
@@ -590,6 +597,7 @@ void Level1(void){
 				ST7735_OutString("\xADJUEGO TERMINADO!");
 				ST7735_SetCursor(3, 5);
 				ST7735_OutString("Puntuaci\xA2n: ");	LCD_OutDec(score);
+//				Sound_Explosion();
 				Delay100ms(60);		//delay 6 seconds at 80MHz
 				gameFlag=0;
 				score=0;
