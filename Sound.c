@@ -1181,9 +1181,11 @@ void Sound_Explosion(void){
 
 void Sound_Fastinvader1(void){
 // write this
+	Sound_Out(fastinvader1,982);
 };
 void Sound_Fastinvader2(void){
 // write this
+	Sound_Out(fastinvader2,1042);
 };
 void Sound_Fastinvader3(void){
 // write this
@@ -1193,5 +1195,5 @@ void Sound_Fastinvader4(void){
 };
 void Sound_Highpitch(void){
 // write this
-	Sound_Out(highpitch,1082);
+	Sound_Out(highpitch,1802);
 };
