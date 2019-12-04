@@ -1,5 +1,5 @@
 ; LCD.s
-; Student names: change this to your names or look very silly
+; Student names: Jim Foster & Dillon Heinen
 ; Last modification date: change this to the last modification date or look very silly
 
 ; Runs on LM4F120/TM4C123
@@ -22,12 +22,12 @@
 DC                      EQU   0x40004100
 DC_COMMAND              EQU   0
 DC_DATA                 EQU   0x40
+GPIO_PORTA_DATA_R       EQU   0x400043FC
 SSI0_DR_R               EQU   0x40008008
 SSI0_SR_R               EQU   0x4000800C
 SSI_SR_RNE              EQU   0x00000004  ; SSI Receive FIFO Not Empty
 SSI_SR_BSY              EQU   0x00000010  ; SSI Busy Bit
 SSI_SR_TNF              EQU   0x00000002  ; SSI Transmit FIFO Not Full
-GPIO_PORTA_DATA_R		EQU	  0x400043FC
 
       EXPORT   writecommand
       EXPORT   writedata
@@ -65,35 +65,54 @@ writecommand
 ;4) Write the command to SSI0_DR_R
 ;5) Read SSI0_SR_R and check bit 4, 
 ;6) If bit 4 is high, loop back to step 5 (wait for BUSY bit to be low)
-	LDR R1, =SSI0_SR_R
-	LDR R2, [R1]					;Read SSIO_SR_R to R2
-	AND R2, R2, #0x10				;Read bit 4 of SSIO_SR_R
-	LSR R2, #4
-	;SUBS R2, R2, #1					;check if bit 4 is high
-	CMP R2, #1
-	BEQ writecommand				;loop if bit 4 is high
-	
-;	LDR R1, =DC_COMMAND
-;	LDR R2, [R1]					;Read D/C to R2
-;	BIC R3, R2, #0x40				;Clear bit 6 of D/C 
-;	STR R3, [R1]					;store back to D/C
-;	Load PORTA_DATA if the above block doesnt work correctly to make PA6 zero
-	LDR R1, =DC   ;GPIO_PORTA_DATA_R
-	LDR R2, [R1]
-	AND R3, R2, #0xBF
-	STR R3, [R1]
-Step5
-	LDR R1, =SSI0_DR_R
-	STRB R0, [R1]					;Store 8-bit command to SSIO_DR_R
-	
-	LDR R1, =SSI0_SR_R
-	LDR R2, [R1]					;Read SSIO_SR_R to R2
-	AND R2, R2, #0x10				;Read bit 4 of SSIO_SR_R
-	LSR R2, #4
-	;SUBS R2, R2, #1					;check if bit 4 is high
-	CMP R2, #1
-	BEQ Step5						;loop if bit 4 is high
 
+    ; copy/paste Lab 7 solution here
+;	LDR R1, =SSI0_SR_R
+;	LDR R2, [R1]					;Read SSIO_SR_R to R2
+;	AND R2, R2, #0x10				;Read bit 4 of SSIO_SR_R
+;	LSR R2, #4
+;	SUBS R2, R2, #1					;check if bit 4 is high
+;	BEQ writecommand				;loop if bit 4 is high
+;	
+;	LDR R1, =DC_COMMAND
+;	LDR R2, =DC
+;	STR R1, [R2]
+;	;LDR R2, [R1]					;Read D/C to R2
+;	;BIC R3, R2, #0x40				;Clear bit 6 of D/C 
+;	;STR R3, [R1]					;store back to D/C
+;;	Load PORTA_DATA if the above block doesnt work correctly to make PA6 zero
+;;	LDR R1, =DC	;GPIO_PORTA_DATA_R
+;;	LDR R2, [R1]
+;;	BIC R3, R2, #0x40
+;;	STR R3, [R1]
+;Step5
+;	LDR R1, =SSI0_DR_R
+;	STRB R0, [R1]					;Store 8-bit command to SSIO_DR_R
+;	
+;	LDR R1, =SSI0_SR_R
+;	LDR R2, [R1]					;Read SSIO_SR_R to R2
+;	AND R2, R2, #0x10				;Read bit 4 of SSIO_SR_R
+;	;LSR R2, #4
+;	CMP R2, #0x10				;check if bit 4 is high
+;	BEQ Step5						;loop if bit 4 is high
+;	
+	LDR R1, =SSI0_SR_R
+CommChk1	LDR R2, [R1]
+	ANDS R2, #0x10
+	BNE CommChk1
+	LDR R1, =DC
+	LDR R2, =DC_COMMAND
+	STR R2, [R1]
+	
+	LDR R1, =SSI0_DR_R
+	STRB R0, [R1]
+	
+	LDR R1, =SSI0_SR_R
+CommChk2	LDR R2, [R1]
+	ANDS R2, #0x10
+	
+	BNE CommChk2
+	BX LR
     
     BX  LR                          ;   return
 
@@ -106,6 +125,8 @@ writedata
 ;2) If bit 1 is low loop back to step 1 (wait for TNF bit to be high)
 ;3) Set D/C=PA6 to one
 ;4) Write the 8-bit data to SSI0_DR_R
+
+        ; copy/paste Lab 7 solution here
 	LDR R1, =SSI0_SR_R
 	LDR R2, [R1]					;Read SSIO_SR_R to R2
 	AND R2, R2, #0x02				;Read bit 1 of SSIO_SR_R
@@ -120,12 +141,12 @@ writedata
 	
 	LDR R1, =GPIO_PORTA_DATA_R
 	LDR R2, [R1]					;Read D/C to R2
-	ORR R3, R2, #0x40				;Set bit 6 of D/C 
+	ORR R3, R2, #0x40				;Clear bit 6 of D/C 
 	STR R3, [R1]					;store back to D/C
 	
 	LDR R1, =SSI0_DR_R
 	STRB R0, [R1]					;Store 8-bit command to SSIO_DR_R
-
+    
     
     BX  LR                          ;   return
 

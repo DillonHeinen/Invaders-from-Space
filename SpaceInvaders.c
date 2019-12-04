@@ -68,10 +68,23 @@ void English(void);	//game in english
 void Spanish(void);	//game in spanish
 void Level1(void);	//Level 1
 void Level2(void);	//Level 2
+void DrawEnemies1(void);
+void DrawEnemies2(void);
 
-uint32_t score=0;
-uint32_t gameFlag=0;
+uint32_t score=0, gameFlag=0, converted, posit;
 int wait;
+int horiz=0, vert=9;
+uint32_t MissileLaunchX[] = {20, 40, 60, 80, 100, 120};
+uint32_t MissileLaunchY[] = {10, 20, 30, 40, 50, 60};
+
+struct mailbox{
+	uint32_t Mail;
+	uint32_t Status;
+	uint32_t previous;
+};
+
+typedef struct mailbox SType;
+struct mailbox Primary;
 
 void PEInit(void){
 	SYSCTL_RCGCGPIO_R |= 0x10;		//turn on PORTE
@@ -81,20 +94,47 @@ void PEInit(void){
 	GPIO_PORTE_DIR_R	&= ~0x01;		//PE0 is input
 }
 
+void SysTickInit(void){
+	NVIC_ST_CTRL_R = 0;                   // disable SysTick during setup
+  NVIC_ST_RELOAD_R = 0x00145855;  			// 60Hz reload value
+  NVIC_ST_CURRENT_R = 0;                // any write to current clears it
+                                        // enable SysTick with core clock
+  NVIC_ST_CTRL_R = 0x00000007;
+}
+
+void SysTick_Handler(void){
+	Primary.Mail = ADC_In();
+	if(Primary.Mail!=Primary.previous){
+		Primary.Status = 1;
+		Primary.previous=Primary.Mail;
+	}
+}
+
+uint32_t Convert(uint32_t input){
+	converted = (110*input)/4095;		//110 keeps the player model on the screen
+  return converted; 
+}
+
 int main(void){
+	Primary.previous=5000;
   DisableInterrupts();
   PLL_Init(Bus80MHz);       // Bus clock is 80 MHz 
   Random_Init(1);
-	ADC_Init();
-  Output_Init();
-	PEInit();
 	
+ // Output_Init();
+	ST7735_InitR(INITR_REDTAB);
+  ST7735_FillScreen(0); 
+	ADC_Init();
+	PEInit();
+	SysTickInit();
+	
+//	Spanish();			//here for debug reasons
 	
   ST7735_FillScreen(0x0000);            // set screen to black
   
-  ST7735_DrawBitmap(52, 159, ns, 18,8); // player ship middle bottom
+  ST7735_DrawBitmap(52, 159, PlayerShip0, 18,8); // player ship middle bottom
  // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
-
+//	Level1();
   ST7735_DrawBitmap(0, 9, SmallEnemy10pointA, 16,10);
   ST7735_DrawBitmap(20,9, SmallEnemy10pointB, 16,10);
   ST7735_DrawBitmap(40, 9, SmallEnemy20pointA, 16,10);
@@ -124,28 +164,28 @@ int main(void){
 		int cursor = ADC_In();
 		if(cursor<1023){
 			ST7735_DrawBitmap(0, 78, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level1();
 			}
 			ST7735_DrawBitmap(0, 78, Empty, 16,10);
 		}
 		else if(cursor>1022 && cursor<2047){
 			ST7735_DrawBitmap(0, 88, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Level2();
 			}
 			ST7735_DrawBitmap(0, 88, Empty, 16,10);
 		}
 		else if(cursor>2046 && cursor<3070){
 			ST7735_DrawBitmap(0, 98, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				English();
 			}
 			ST7735_DrawBitmap(0, 98, Empty, 16,10);
 		}
 		else{
 			ST7735_DrawBitmap(0, 108, SmallEnemy10pointA, 16,10);
-			if(GPIO_PORTE_DATA_R==1){
+			if((GPIO_PORTE_DATA_R&0x01)==1){
 				Spanish();
 			}
 			ST7735_DrawBitmap(0, 108, Empty, 16,10);
@@ -169,7 +209,7 @@ int main(void){
 void English(void){
 	ST7735_FillScreen(0x0000);            // set screen to black
   
-  ST7735_DrawBitmap(52, 159, ns, 18,8); // player ship middle bottom
+  ST7735_DrawBitmap(52, 159, PlayerShip0, 18,8); // player ship middle bottom
  // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
 
   ST7735_DrawBitmap(0, 9, SmallEnemy10pointA, 16,10);
@@ -245,7 +285,7 @@ void Spanish(void){
 	
 		ST7735_FillScreen(0x0000);            // set screen to black
   
-  ST7735_DrawBitmap(52, 159, ns, 18,8); // player ship middle bottom
+  ST7735_DrawBitmap(52, 159, PlayerShip0, 18,8); // player ship middle bottom
  // ST7735_DrawBitmap(53, 151, Bunker0, 18,5);
 
   ST7735_DrawBitmap(0, 9, SmallEnemy10pointA, 16,10);
@@ -258,8 +298,10 @@ void Spanish(void){
   Delay100ms(5);              // delay .5 sec at 80 MHz
 
 //  ST7735_FillScreen(0x0000);            // set screen to black
-  ST7735_SetCursor(0, 2);
-  ST7735_OutString("INVASORES DEL  ESPACIO");
+  ST7735_SetCursor(4, 2);
+  ST7735_OutString("INVASORES DEL");
+	ST7735_SetCursor(7, 3);
+	ST7735_OutString("ESPACIO");
   ST7735_SetCursor(7, 7);
 	ST7735_OutString("Nivel 1");
   ST7735_SetCursor(7, 8);
@@ -315,15 +357,110 @@ void Spanish(void){
 }
 
 void Level1(void){
+		ST7735_FillScreen(0x0000);            // set screen to black
+		ST7735_DrawBitmap(2, 140, Bunker0, 16,10);
+		ST7735_DrawBitmap(110, 140, Bunker0, 16,10);
 	while(1){
 		
+		while(horiz<=10){
+			DrawEnemies1();
+			horiz++;
+			DrawEnemies2();
+		}
+		vert++;
+		while(horiz>=0){
+			DrawEnemies1();
+			horiz--;
+			DrawEnemies2();
+		}
+		vert++;
+		if(Primary.Status==1){
+			posit = Convert(Primary.Mail);
+			ST7735_DrawBitmap(posit, 159, PlayerShip0, 18,8);
+			Primary.Status=0;
+		}
 	}
+	
 }
 
 void Level2(void){
 	while(1){
 		
 	}
+}
+
+void DrawEnemies1(void){
+		ST7735_DrawBitmap(horiz, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert, SmallEnemy30pointB, 16,10);
+	
+		ST7735_DrawBitmap(horiz, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+10, SmallEnemy30pointA, 16,10);
+	
+		ST7735_DrawBitmap(horiz, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+20, SmallEnemy20pointB, 16,10);
+	
+		ST7735_DrawBitmap(horiz, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+30, SmallEnemy20pointA, 16,10);
+		
+		ST7735_DrawBitmap(horiz, vert+40, SmallEnemy10pointB, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+40, SmallEnemy10pointB, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+40, SmallEnemy10pointB, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+40, SmallEnemy10pointB, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+40, SmallEnemy10pointB, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+40, SmallEnemy10pointB, 16,10);
+}
+
+void DrawEnemies2(void){
+		ST7735_DrawBitmap(horiz, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert, SmallEnemy30pointB, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert, SmallEnemy30pointB, 16,10);
+	
+		ST7735_DrawBitmap(horiz, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+10, SmallEnemy30pointA, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+10, SmallEnemy30pointA, 16,10);
+	
+		ST7735_DrawBitmap(horiz, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+20, SmallEnemy20pointB, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+20, SmallEnemy20pointB, 16,10);
+	
+		ST7735_DrawBitmap(horiz, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+30, SmallEnemy20pointA, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+30, SmallEnemy20pointA, 16,10);
+		
+		ST7735_DrawBitmap(horiz, vert+40, SmallEnemy10pointA, 16,10);
+		ST7735_DrawBitmap(horiz+20, vert+40, SmallEnemy10pointA, 16,10);
+		ST7735_DrawBitmap(horiz+40, vert+40, SmallEnemy10pointA, 16,10);
+		ST7735_DrawBitmap(horiz+60, vert+40, SmallEnemy10pointA, 16,10);
+		ST7735_DrawBitmap(horiz+80, vert+40, SmallEnemy10pointA, 16,10);
+		ST7735_DrawBitmap(horiz+100, vert+40, SmallEnemy10pointA, 16,10);
 }
 // You can't use this timer, it is here for starter code only 
 // you must use interrupts to perform delays

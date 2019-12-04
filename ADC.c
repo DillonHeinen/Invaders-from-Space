@@ -12,12 +12,17 @@ void ADC_Init(void){
 	SYSCTL_RCGCGPIO_R |= 0x08;
 	volatile int wait=0;
 	wait++;
+	wait++;
+	wait++;
+	wait++;
 	GPIO_PORTD_DIR_R &= ~0x04;
 	GPIO_PORTD_DEN_R &= ~0x04;
 	GPIO_PORTD_AFSEL_R |= 0x04;
 	GPIO_PORTD_AMSEL_R |= 0x04;
 	
 	SYSCTL_RCGCADC_R |= 0x01;			//activate ADC0
+	wait++;
+	wait++;
 	wait++;
 	wait++;
 	ADC0_PC_R |= 0x01;						//set sampling rate to 125kHz
