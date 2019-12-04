@@ -1157,6 +1157,7 @@ void Sound_Play(void){
 void Sound_Init(void){
 // write this
 	DAC_Init();          // Port B is DAC
+	
   Index = 0;
   Timer0_Init(&Sound_Play,80000000/11000); //11 kHz
 };
@@ -1165,6 +1166,7 @@ void Sound_Out(const uint8_t *pt, uint32_t count){
 	Wave = pt;
   Index = 0;
   SoundCount = count;
+	NVIC_EN0_R = 1<<19;           // 9) enable IRQ 19 in NVIC
 };
 void Sound_Shoot(void){
 // write this

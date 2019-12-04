@@ -27,6 +27,7 @@
 
 void (*PeriodicTask1)(void);   // user function
 
+
 // ***************** TIMER1_Init ****************
 // Activate TIMER1 interrupts to run user task periodically
 // Inputs:  task is a pointer to a user function
@@ -52,4 +53,6 @@ void Timer1_Init(void(*task)(void), uint32_t period){
 void Timer1A_Handler(void){
   TIMER1_ICR_R = TIMER_ICR_TATOCINT;// acknowledge TIMER1A timeout
   (*PeriodicTask1)();                // execute user task
+	
 }
+
